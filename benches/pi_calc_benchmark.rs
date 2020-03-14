@@ -2,7 +2,6 @@
 
 use criterion::*;
 use bigdecimal::*;
-use std::cell::*;
 use std::thread;
 use std::sync::*;
 
@@ -193,38 +192,16 @@ fn calc_series_with_threads_with_cache(n: u32) -> BigDecimal {
     result
 }
 
-fn calc_series_no_threads_no_cache_benchmark(c: &mut Criterion) {
-    c.bench_function("1 iteration no threads no cache", |b| b.iter(|| calc_series_no_threads_no_cache(1)));
-    c.bench_function("10 iterations no threads no cache", |b| b.iter(|| calc_series_no_threads_no_cache(10)));
-    c.bench_function("50 iterations no threads no cache", |b| b.iter(|| calc_series_no_threads_no_cache(50)));
-    c.bench_function("100 iterations no threads no cache", |b| b.iter(|| calc_series_no_threads_no_cache(100)));
+fn calc_series_benchmark(c: &mut Criterion) {
+    let mut group = c.benchmark_group("calc series");
+
+    for &i in [1u32, 10u32, 50u32, 100u32].iter() {
+        group.bench_function(BenchmarkId::new("no threads no cache", i), |b| b.iter(|| calc_series_no_threads_no_cache(i)));
+        group.bench_function(BenchmarkId::new("no threads with cache", i), |b| b.iter(|| calc_series_no_threads_with_cache(i)));
+        group.bench_function(BenchmarkId::new("with threads no cache", i), |b| b.iter(|| calc_series_with_threads_no_cache(i)));
+        group.bench_function(BenchmarkId::new("with threads with cache", i), |b| b.iter(|| calc_series_with_threads_with_cache(i)));
+    }
 }
 
-fn calc_series_no_threads_with_cache_benchmark(c: &mut Criterion) {
-    c.bench_function("1 iteration no threads with cache", |b| b.iter(|| calc_series_no_threads_with_cache(1)));
-    c.bench_function("10 iterations no threads with cache", |b| b.iter(|| calc_series_no_threads_with_cache(10)));
-    c.bench_function("50 iterations no threads with cache", |b| b.iter(|| calc_series_no_threads_with_cache(50)));
-    c.bench_function("100 iterations no threads with cache", |b| b.iter(|| calc_series_no_threads_with_cache(100)));
-}
-
-fn calc_series_with_threads_no_cache_benchmark(c: &mut Criterion) {
-    c.bench_function("1 iteration with threads no cache", |b| b.iter(|| calc_series_with_threads_no_cache(1)));
-    c.bench_function("10 iterations with threads no cache", |b| b.iter(|| calc_series_with_threads_no_cache(10)));
-    c.bench_function("50 iterations with threads no cache", |b| b.iter(|| calc_series_with_threads_no_cache(50)));
-    c.bench_function("100 iterations with threads no cache", |b| b.iter(|| calc_series_with_threads_no_cache(100)));
-}
-
-fn calc_series_with_threads_with_cache_benchmark(c: &mut Criterion) {
-    c.bench_function("1 iteration with threads with cache", |b| b.iter(|| calc_series_with_threads_with_cache(1)));
-    c.bench_function("10 iterations with threads with cache", |b| b.iter(|| calc_series_with_threads_with_cache(10)));
-    c.bench_function("50 iterations with threads with cache", |b| b.iter(|| calc_series_with_threads_with_cache(50)));
-    c.bench_function("100 iterations with threads with cache", |b| b.iter(|| calc_series_with_threads_with_cache(100)));
-}
-
-criterion_group!(benches,
-                //  calc_series_no_threads_no_cache_benchmark,
-                 calc_series_no_threads_with_cache_benchmark,
-                //  calc_series_with_threads_no_cache_benchmark,
-                //  calc_series_with_threads_with_cache_benchmark
-                );
+criterion_group!(benches, calc_series_benchmark);
 criterion_main!(benches);
