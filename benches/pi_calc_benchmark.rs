@@ -106,7 +106,7 @@ fn calc_series_for_range(start_index: u64, end_index: u64) -> BigDecimal {
 }
 
 fn calc_series_with_threads_no_cache(n: u64) -> BigDecimal {
-    let thread_count: u64 = (num_cpus::get() * 2) as u64;
+    let thread_count: u64 = (num_cpus::get()) as u64;
 
     if n < thread_count {
         return calc_series_no_threads_no_cache(n);
@@ -185,7 +185,7 @@ fn calc_series_for_range_with_cache(start_index: u64, end_index: u64, factorial_
 }
 
 fn calc_series_with_threads_with_cache(n: u64) -> BigDecimal {
-    let thread_count: u64 = (num_cpus::get() * 2) as u64;
+    let thread_count: u64 = (num_cpus::get()) as u64;
 
     if n < thread_count {
         return calc_series_no_threads_no_cache(n);
