@@ -13,3 +13,8 @@ to generate the benches. *This may take a lot of time (for me it is usually up t
 
 Then you can browse the generated files in `target/criterion`.
 For example, open `target/criterion/report/index.html` to view a menu for all the benchmarks.
+
+## Results
+
+Result comparing all combinations for use of threading and cache and not using them:
+![result](results/all_rw_lock.png)
