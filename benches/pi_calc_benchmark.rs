@@ -140,13 +140,13 @@ fn calc_series_with_threads_no_cache(n: u64) -> BigDecimal {
 }
 
 struct AtomicFactorialCalculator {
-    cache: RwLock<Vec<BigDecimal>>
+    cache: Mutex<Vec<BigDecimal>>
 }
 
 impl AtomicFactorialCalculator {
     fn new() -> Self {
         AtomicFactorialCalculator {
-            cache: RwLock::new(vec![
+            cache: Mutex::new(vec![
                 new_num(1),
                 new_num(1)
             ])
@@ -154,17 +154,17 @@ impl AtomicFactorialCalculator {
     }
 
     fn is_calculated(&self, n: u64) -> bool {
-        self.cache.read().unwrap().len() >= ((n + 1) as usize)
+        self.cache.lock().unwrap().len() >= ((n + 1) as usize)
     }
 
     fn calc(&self, n: u64) -> BigDecimal {
         if !self.is_calculated(n) {
             let prev = self.calc(n - 1);
             let new_val = prev * new_num(n);
-            self.cache.write().unwrap().push(new_val);
+            self.cache.lock().unwrap().push(new_val);
         }
         
-        let cache_borrow = self.cache.read().unwrap();
+        let cache_borrow = self.cache.lock().unwrap();
         cache_borrow[(n as usize)].clone()
     }
 }
