@@ -19,5 +19,9 @@ For example, open `target/criterion/report/index.html` to view a menu for all th
 Result comparing all combinations for use of threading and cache and not using them (using 4 threads):
 ![result](results/all_rw_lock.png)
 
+## Formula for calculating Pi
+
+![formula for pi](images/pi_formula.png)
+
 ## Notes
 The code is most likely unoptimal. For starters, it is all in one file. I couldn't figure out how to include files, so I left it like that. Also, maybe some parts of the code can be writen in a better way. That's okay. The overall results are still interesting and tell us how cache and multithreading help.
