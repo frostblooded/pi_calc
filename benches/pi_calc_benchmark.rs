@@ -116,7 +116,7 @@ fn calc_series_with_threads_no_cache(n: u64) -> BigDecimal {
     let jobs_per_thread = n / thread_count;
     let remaining_jobs = n % thread_count;
 
-    for i in 0..=(thread_count - 1) {
+    for i in 0..thread_count {
         let start_index = i * jobs_per_thread;
         let end_index = (i + 1) * jobs_per_thread - 1;
 
@@ -196,7 +196,7 @@ fn calc_series_with_threads_with_cache(n: u64) -> BigDecimal {
     let remaining_jobs = n % thread_count;
     let factorial_calculator = Arc::new(AtomicFactorialCalculator::new());
 
-    for i in 0..=(thread_count - 1) {
+    for i in 0..thread_count {
         let start_index = i * jobs_per_thread;
         let end_index = (i + 1) * jobs_per_thread - 1;
         let factorial_calculator_clone = factorial_calculator.clone();
@@ -206,10 +206,8 @@ fn calc_series_with_threads_with_cache(n: u64) -> BigDecimal {
         }));
     }
 
-    let factorial_calculator_clone = factorial_calculator.clone();
-
     handles.push(thread::spawn(move || {
-        calc_series_for_range_with_cache(n - remaining_jobs, n, factorial_calculator_clone)
+        calc_series_for_range_with_cache(n - remaining_jobs, n, factorial_calculator)
     }));
 
     let mut result = bigdecimal::Zero::zero();
