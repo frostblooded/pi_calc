@@ -4,8 +4,6 @@ use criterion::*;
 use bigdecimal::*;
 use std::thread;
 use std::sync::*;
-use threadpool::ThreadPool;
-use std::sync::mpsc::channel;
 
 fn new_num(n: u64) -> BigDecimal {
     BigDecimal::from(n)
@@ -186,48 +184,20 @@ fn calc_series_with_threads_with_cache(n: u64) -> BigDecimal {
     result
 }
 
-fn calc_series_single(k: u64, factorial_calculator: Arc<FactorialCalculator>) -> BigDecimal {
-    (factorial_calculator.get(4 * k) * (&new_num(1103) + &new_num(26390) * new_num(k))) /
-             (pow(&factorial_calculator.get(k), 4) * pow(&new_num(396), 4 * k))
-}
-
-fn calc_series_with_thread_pool_with_cache(n: u64) -> BigDecimal {
-    let factorial_calculator = Arc::new(FactorialCalculator::new(4 * n));
-    let job_count = (n + 1) as usize;
-    let pool = ThreadPool::new(job_count);
-    let (tx, rx) = channel();
-
-    for i in 0..=n {
-        let factorial_calculator_clone = factorial_calculator.clone();
-        let tx = tx.clone();
-
-        pool.execute(move || {
-            let calc_res = calc_series_single(i, factorial_calculator_clone);
-            tx.send(calc_res).expect("Can't send message. Receiver is gone.");
-        });
-    }
-
-    let mut result: bigdecimal::BigDecimal = rx.iter().take(job_count).sum();
-    result = result * (new_num(2) * new_num(2).sqrt().unwrap()) / new_num(9801);
-    1 / result
-}
-
 fn calc_series_benchmark(c: &mut Criterion) {
     println!("{}", calc_series_no_threads_no_cache(50));
     println!("{}", calc_series_no_threads_with_cache(50));
     println!("{}", calc_series_with_threads_no_cache(50));
     println!("{}", calc_series_with_threads_with_cache(50));
-    println!("{}", calc_series_with_thread_pool_with_cache(50));
 
     let mut group = c.benchmark_group("calc series");
-    let keypoints = (10..=200).step_by(10);
+    let keypoints = (10..=100).step_by(10);
 
     for i in keypoints {
         group.bench_function(BenchmarkId::new("no threads no cache", i), |b| b.iter(|| calc_series_no_threads_no_cache(i)));
         group.bench_function(BenchmarkId::new("no threads with cache", i), |b| b.iter(|| calc_series_no_threads_with_cache(i)));
         group.bench_function(BenchmarkId::new("with threads no cache", i), |b| b.iter(|| calc_series_with_threads_no_cache(i)));
         group.bench_function(BenchmarkId::new("with threads with cache", i), |b| b.iter(|| calc_series_with_threads_with_cache(i)));
-        group.bench_function(BenchmarkId::new("with threads with thread pool with cache", i), |b| b.iter(|| calc_series_with_thread_pool_with_cache(i)));
     }
 }
 
