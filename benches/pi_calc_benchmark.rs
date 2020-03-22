@@ -160,7 +160,7 @@ fn calc_series_with_threads_with_cache(n: u64) -> BigDecimal {
     let remaining_jobs = n % thread_count;
     let factorial_calculator = Arc::new(FactorialCalculator::new(4 * n));
 
-    for i in 0..thread_count {
+    for i in 0..(thread_count - 1) {
         let start_index = i * jobs_per_thread;
         let end_index = (i + 1) * jobs_per_thread - 1;
         let factorial_calculator_clone = factorial_calculator.clone();
@@ -171,7 +171,7 @@ fn calc_series_with_threads_with_cache(n: u64) -> BigDecimal {
     }
 
     handles.push(thread::spawn(move || {
-        calc_series_for_range_with_cache(n - remaining_jobs, n, factorial_calculator)
+        calc_series_for_range_with_cache(n - jobs_per_thread - remaining_jobs, n, factorial_calculator)
     }));
 
     let mut result = bigdecimal::Zero::zero();
@@ -191,7 +191,7 @@ fn calc_series_benchmark(c: &mut Criterion) {
     println!("{}", calc_series_with_threads_with_cache(50));
 
     let mut group = c.benchmark_group("calc series");
-    let keypoints = (10..=100).step_by(10);
+    let keypoints = (0..=200).step_by(25);
 
     for i in keypoints {
         group.bench_function(BenchmarkId::new("no threads no cache", i), |b| b.iter(|| calc_series_no_threads_no_cache(i)));
