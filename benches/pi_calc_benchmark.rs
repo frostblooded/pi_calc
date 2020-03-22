@@ -9,16 +9,6 @@ fn new_num(n: u64) -> BigDecimal {
     BigDecimal::from(n)
 }
 
-fn factorial(n: u64) -> BigDecimal {
-    let mut result = new_num(1);
-
-    for i in 2..=n {
-        result *= new_num(i);
-    }
-
-    result
-}
-
 fn pow(b: &BigDecimal, power: u64) -> BigDecimal {
     let mut res = new_num(1);
 
@@ -27,22 +17,6 @@ fn pow(b: &BigDecimal, power: u64) -> BigDecimal {
     }
 
     res
-}
-
-fn calc_series_no_threads_no_cache(n: u64) -> BigDecimal {
-    let mut pi = new_num(0);
-    let a = new_num(1103);
-    let b = new_num(26390);
-    let c = new_num(396);
-
-    for k in 0..=n {
-        pi += (factorial(4 * k) * (&a + &b * new_num(k))) /
-              (pow(&factorial(k), 4) * pow(&c, 4 * k));
-    }
-    
-    pi *= (new_num(2) * new_num(2).sqrt().unwrap()) / new_num(9801);
-    pi = 1 / pi;
-    pi
 }
 
 struct FactorialCalculator {
@@ -69,7 +43,7 @@ impl FactorialCalculator {
 }
 
 
-fn calc_series_no_threads_with_cache(n: u64) -> BigDecimal {
+fn calc_series_no_threads(n: u64) -> BigDecimal {
     let mut pi = new_num(0);
     let a = new_num(1103);
     let b = new_num(26390);
@@ -86,55 +60,7 @@ fn calc_series_no_threads_with_cache(n: u64) -> BigDecimal {
     pi
 }
 
-fn calc_series_for_range(start_index: u64, end_index: u64) -> BigDecimal {
-    let mut pi = new_num(0);
-    let a = new_num(1103);
-    let b = new_num(26390);
-    let c = new_num(396);
-
-    for k in start_index..=end_index {
-        pi += (factorial(4 * k) * (&a + &b * new_num(k))) /
-              (pow(&factorial(k), 4) * pow(&c, 4 * k));
-    }
-    
-    pi * (new_num(2) * new_num(2).sqrt().unwrap()) / new_num(9801)
-}
-
-fn calc_series_with_threads_no_cache(n: u64) -> BigDecimal {
-    let thread_count: u64 = (num_cpus::get()) as u64;
-
-    if n < thread_count {
-        return calc_series_no_threads_no_cache(n);
-    }
-
-    let mut handles = vec![];
-    let jobs_per_thread = n / thread_count;
-    let remaining_jobs = n % thread_count;
-
-    for i in 0..thread_count {
-        let start_index = i * jobs_per_thread;
-        let end_index = (i + 1) * jobs_per_thread - 1;
-
-        handles.push(thread::spawn(move || {
-            calc_series_for_range(start_index, end_index)
-        }));
-    }
-
-    handles.push(thread::spawn(move || {
-        calc_series_for_range(n - remaining_jobs, n)
-    }));
-
-    let mut result = bigdecimal::Zero::zero();
-
-    for handle in handles {
-        result += handle.join().expect("Thread finished with error");
-    }
-
-    result = 1 / result;
-    result
-}
-
-fn calc_series_for_range_with_cache(start_index: u64, end_index: u64, factorial_calculator: Arc<FactorialCalculator>) -> BigDecimal {
+fn calc_series_for_range(start_index: u64, end_index: u64, factorial_calculator: Arc<FactorialCalculator>) -> BigDecimal {
     let mut pi = new_num(0);
     let a = new_num(1103);
     let b = new_num(26390);
@@ -144,15 +70,15 @@ fn calc_series_for_range_with_cache(start_index: u64, end_index: u64, factorial_
         pi += (factorial_calculator.get(4 * k) * (&a + &b * new_num(k))) /
               (pow(&factorial_calculator.get(k), 4) * pow(&c, 4 * k));
     }
-    
-    pi * (new_num(2) * new_num(2).sqrt().unwrap()) / new_num(9801)
+
+    pi
 }
 
-fn calc_series_with_threads_with_cache(n: u64) -> BigDecimal {
+fn calc_series_with_threads(n: u64) -> BigDecimal {
     let thread_count: u64 = (num_cpus::get()) as u64;
 
     if n < thread_count {
-        return calc_series_no_threads_no_cache(n);
+        return calc_series_no_threads(n);
     }
 
     let mut handles = vec![];
@@ -166,12 +92,12 @@ fn calc_series_with_threads_with_cache(n: u64) -> BigDecimal {
         let factorial_calculator_clone = factorial_calculator.clone();
 
         handles.push(thread::spawn(move || {
-            calc_series_for_range_with_cache(start_index, end_index, factorial_calculator_clone)
+            calc_series_for_range(start_index, end_index, factorial_calculator_clone)
         }));
     }
 
     handles.push(thread::spawn(move || {
-        calc_series_for_range_with_cache(n - jobs_per_thread - remaining_jobs, n, factorial_calculator)
+        calc_series_for_range(n - jobs_per_thread - remaining_jobs, n, factorial_calculator)
     }));
 
     let mut result = bigdecimal::Zero::zero();
@@ -180,24 +106,22 @@ fn calc_series_with_threads_with_cache(n: u64) -> BigDecimal {
         result += handle.join().expect("Thread finished with error");
     }
 
+    
+    result = result * (new_num(2) * new_num(2).sqrt().unwrap()) / new_num(9801);
     result = 1 / result;
     result
 }
 
 fn calc_series_benchmark(c: &mut Criterion) {
-    println!("{}", calc_series_no_threads_no_cache(50));
-    println!("{}", calc_series_no_threads_with_cache(50));
-    println!("{}", calc_series_with_threads_no_cache(50));
-    println!("{}", calc_series_with_threads_with_cache(50));
+    println!("{}", calc_series_no_threads(50));
+    println!("{}", calc_series_with_threads(50));
 
     let mut group = c.benchmark_group("calc series");
-    let keypoints = (0..=200).step_by(25);
+    let keypoints = (25..=200).step_by(25);
 
     for i in keypoints {
-        group.bench_function(BenchmarkId::new("no threads no cache", i), |b| b.iter(|| calc_series_no_threads_no_cache(i)));
-        group.bench_function(BenchmarkId::new("no threads with cache", i), |b| b.iter(|| calc_series_no_threads_with_cache(i)));
-        group.bench_function(BenchmarkId::new("with threads no cache", i), |b| b.iter(|| calc_series_with_threads_no_cache(i)));
-        group.bench_function(BenchmarkId::new("with threads with cache", i), |b| b.iter(|| calc_series_with_threads_with_cache(i)));
+        group.bench_function(BenchmarkId::new("no threads", i), |b| b.iter(|| calc_series_no_threads(i)));
+        group.bench_function(BenchmarkId::new("with threads", i), |b| b.iter(|| calc_series_with_threads(i)));
     }
 }
 
