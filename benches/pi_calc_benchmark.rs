@@ -4,7 +4,6 @@ use criterion::*;
 use bigdecimal::*;
 use std::thread;
 use std::sync::*;
-use std::cell::RefCell;
 use threadpool::ThreadPool;
 use std::sync::mpsc::channel;
 
@@ -49,43 +48,39 @@ fn calc_series_no_threads_no_cache(n: u64) -> BigDecimal {
 }
 
 struct FactorialCalculator {
-    cache: RefCell<Vec<BigDecimal>>
+    cache: Vec<BigDecimal>
 }
 
 impl FactorialCalculator {
-    fn new() -> Self {
+    fn new(n: u64) -> Self {
+        let mut cache_builder: Vec<BigDecimal> = vec![];
+        cache_builder.push(new_num(1));
+
+        for i in 1..=n {
+            cache_builder.push(&cache_builder[(i - 1) as usize] * new_num(i));
+        }
+
         FactorialCalculator {
-            cache: RefCell::new(vec![
-                new_num(1),
-                new_num(1)
-            ])
+            cache: cache_builder
         }
     }
 
-    fn is_calculated(&self, n: u64) -> bool {
-        self.cache.borrow().len() >= ((n + 1) as usize)
-    }
-
-    fn calc(&self, n: u64) -> BigDecimal {
-        if !self.is_calculated(n) {
-            let prev = self.calc(n - 1);
-            self.cache.borrow_mut().push(prev * new_num(n));
-        }
-        
-        self.cache.borrow()[(n as usize)].clone()
+    fn get(&self, i: u64) -> &BigDecimal {
+        &self.cache[i as usize]
     }
 }
+
 
 fn calc_series_no_threads_with_cache(n: u64) -> BigDecimal {
     let mut pi = new_num(0);
     let a = new_num(1103);
     let b = new_num(26390);
     let c = new_num(396);
-    let factorial_calculator = FactorialCalculator::new();
+    let factorial_calculator = FactorialCalculator::new(4 * n);
 
     for k in 0..=n {
-        pi += (factorial_calculator.calc(4 * k) * (&a + &b * new_num(k))) /
-              (pow(&factorial_calculator.calc(k), 4) * pow(&c, 4 * k));
+        pi += (factorial_calculator.get(4 * k) * (&a + &b * new_num(k))) /
+              (pow(&factorial_calculator.get(k), 4) * pow(&c, 4 * k));
     }
     
     pi *= (new_num(2) * new_num(2).sqrt().unwrap()) / new_num(9801);
@@ -141,46 +136,15 @@ fn calc_series_with_threads_no_cache(n: u64) -> BigDecimal {
     result
 }
 
-struct AtomicFactorialCalculator {
-    cache: Mutex<Vec<BigDecimal>>
-}
-
-impl AtomicFactorialCalculator {
-    fn new() -> Self {
-        AtomicFactorialCalculator {
-            cache: Mutex::new(vec![
-                new_num(1),
-                new_num(1)
-            ])
-        }
-    }
-
-    fn is_calculated(&self, n: u64) -> bool {
-        self.cache.lock().unwrap().len() >= ((n + 1) as usize)
-    }
-
-    fn calc(&self, n: u64) -> BigDecimal {
-        if !self.is_calculated(n) {
-            let prev = self.calc(n - 1);
-            let new_val = prev * new_num(n);
-            self.cache.lock().unwrap().push(new_val);
-        }
-        
-        let cache_borrow = self.cache.lock().unwrap();
-        cache_borrow[(n as usize)].clone()
-    }
-}
-
-
-fn calc_series_for_range_with_cache(start_index: u64, end_index: u64, factorial_calculator: Arc<AtomicFactorialCalculator>) -> BigDecimal {
+fn calc_series_for_range_with_cache(start_index: u64, end_index: u64, factorial_calculator: Arc<FactorialCalculator>) -> BigDecimal {
     let mut pi = new_num(0);
     let a = new_num(1103);
     let b = new_num(26390);
     let c = new_num(396);
 
     for k in start_index..=end_index {
-        pi += (factorial_calculator.calc(4 * k) * (&a + &b * new_num(k))) /
-              (pow(&factorial_calculator.calc(k), 4) * pow(&c, 4 * k));
+        pi += (factorial_calculator.get(4 * k) * (&a + &b * new_num(k))) /
+              (pow(&factorial_calculator.get(k), 4) * pow(&c, 4 * k));
     }
     
     pi * (new_num(2) * new_num(2).sqrt().unwrap()) / new_num(9801)
@@ -196,7 +160,7 @@ fn calc_series_with_threads_with_cache(n: u64) -> BigDecimal {
     let mut handles = vec![];
     let jobs_per_thread = n / thread_count;
     let remaining_jobs = n % thread_count;
-    let factorial_calculator = Arc::new(AtomicFactorialCalculator::new());
+    let factorial_calculator = Arc::new(FactorialCalculator::new(4 * n));
 
     for i in 0..thread_count {
         let start_index = i * jobs_per_thread;
@@ -222,13 +186,13 @@ fn calc_series_with_threads_with_cache(n: u64) -> BigDecimal {
     result
 }
 
-fn calc_series_single(k: u64, factorial_calculator: Arc<AtomicFactorialCalculator>) -> BigDecimal {
-    (factorial_calculator.calc(4 * k) * (&new_num(1103) + &new_num(26390) * new_num(k))) /
-             (pow(&factorial_calculator.calc(k), 4) * pow(&new_num(396), 4 * k))
+fn calc_series_single(k: u64, factorial_calculator: Arc<FactorialCalculator>) -> BigDecimal {
+    (factorial_calculator.get(4 * k) * (&new_num(1103) + &new_num(26390) * new_num(k))) /
+             (pow(&factorial_calculator.get(k), 4) * pow(&new_num(396), 4 * k))
 }
 
 fn calc_series_with_thread_pool_with_cache(n: u64) -> BigDecimal {
-    let factorial_calculator = Arc::new(AtomicFactorialCalculator::new());
+    let factorial_calculator = Arc::new(FactorialCalculator::new(4 * n));
     let job_count = (n + 1) as usize;
     let pool = ThreadPool::new(job_count);
     let (tx, rx) = channel();
