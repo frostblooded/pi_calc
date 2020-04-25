@@ -1,4 +1,4 @@
-use criterion::*;
+use clap::{App, Arg};
 use std::sync::*;
 use std::thread;
 
@@ -23,7 +23,6 @@ fn pow(b: &BigNum, power: u64) -> BigNum {
 struct FactorialCalculator {
     cache: Vec<BigNum>,
 }
-
 impl FactorialCalculator {
     fn new(n: u64) -> Self {
         let mut cache_builder: Vec<BigNum> = vec![];
@@ -77,9 +76,7 @@ fn calc_series_for_range(
     pi
 }
 
-fn calc_series_with_threads(n: u64) -> BigNum {
-    let thread_count: u64 = (num_cpus::get()) as u64;
-
+fn calc_series_with_threads(n: u64, thread_count: u64) -> BigNum {
     if n < thread_count {
         return calc_series_no_threads(n);
     }
@@ -118,30 +115,20 @@ fn calc_series_with_threads(n: u64) -> BigNum {
     result
 }
 
-fn calc_series_benchmark(c: &mut Criterion) {
-    const TEST_ITERATIONS: u64 = 1;
-    println!("{}", calc_series_no_threads(TEST_ITERATIONS));
-    println!("{}", calc_series_with_threads(TEST_ITERATIONS));
+fn main() {
+    let matches = App::new("Pi calc program")
+        .version("1.0")
+        .author("Nikolay Danailov")
+        .about("Efficiently calculating Pi in a multithreaded way")
+        .arg(Arg::with_name("thread_count").short("t").takes_value(true))
+        .get_matches();
 
-    const SAMPLE_SIZE: usize = 10;
-    let mut group = c.benchmark_group("calc series");
-    let custom_group = group.sample_size(SAMPLE_SIZE);
-    let keypoints = (100..1000).step_by(100);
+    let thread_count: u64 = matches
+        .value_of("thread_count")
+        .expect("thread_count argument not passed in and clap didn't detect it for some reason")
+        .parse()
+        .expect("failed to parse thread_count to a number");
 
-    for i in keypoints {
-        custom_group.bench_function(BenchmarkId::new("no threads", i), |b| {
-            b.iter(|| calc_series_no_threads(i))
-        });
-
-        custom_group.bench_function(BenchmarkId::new("with threads", i), |b| {
-            b.iter(|| calc_series_with_threads(i))
-        });
-
-        custom_group.bench_function(BenchmarkId::new("factorial cache init", i), |b| {
-            b.iter(|| FactorialCalculator::new(4 * i))
-        });
-    }
+    println!("{:?}", thread_count);
+    println!("{:?}", calc_series_with_threads(5000, thread_count));
 }
-
-criterion_group!(benches, calc_series_benchmark);
-criterion_main!(benches);
