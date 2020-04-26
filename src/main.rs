@@ -134,6 +134,7 @@ fn main() {
                 .required(true)
                 .takes_value(true),
         )
+        .arg(Arg::with_name("iterations").short("i").takes_value(true))
         .get_matches();
 
     let thread_count: u64 = matches
@@ -148,6 +149,13 @@ fn main() {
         .parse()
         .expect("failed to parse precision to a number");
 
+    const DEFAULT_ITERATIONS_INPUT: &str = "1000";
+    let iterations: u64 = matches
+        .value_of("iterations")
+        .unwrap_or(DEFAULT_ITERATIONS_INPUT)
+        .parse()
+        .expect("failed to parse iterations to a number");
+
     // The precision that rug uses is the length of the mantissa in bits,
     // but the input precision is in digits after the dot. Here we convert
     // the input precision into the corresponding mantissa bit length
@@ -155,6 +163,6 @@ fn main() {
     let log = 10f32.log2();
     let precision = ((precision as f32) * log).floor() as u32;
 
-    let pi = calc_series(precision, thread_count, 10);
+    let pi = calc_series(precision, thread_count, iterations);
     println!("{}", pi);
 }
