@@ -1,6 +1,7 @@
 use clap::{App, Arg};
 use std::sync::*;
 use std::thread;
+use std::time::SystemTime;
 
 type BigNum = rug::Float;
 
@@ -21,6 +22,7 @@ fn pow(b: &BigNum, power: u64) -> BigNum {
 struct FactorialCalculator {
     cache: Vec<BigNum>,
 }
+
 impl FactorialCalculator {
     fn new(precision: u32, n: u64) -> Self {
         let mut cache_builder: Vec<BigNum> = vec![];
@@ -60,6 +62,8 @@ fn calc_series_helper_for_range(
 }
 
 fn calc_series(precision: u32, thread_count: u64, n: u64) -> BigNum {
+    // Because of the used formula, we know that 4 * n is the biggest factorial
+    // that we are going to need.
     let factorial_calculator = Arc::new(FactorialCalculator::new(precision, 4 * n));
 
     let mut result = if n < thread_count {
@@ -99,12 +103,27 @@ fn calc_series_helper_with_threads(
         let end_index = end_indexes[i as usize];
 
         handles.push(thread::spawn(move || {
-            calc_series_helper_for_range(
+            let start_time = SystemTime::now();
+
+            println!(
+                "Thread {} starting on range ({}, {})!",
+                i, start_index, end_index
+            );
+
+            let res = calc_series_helper_for_range(
                 precision,
                 start_index,
                 end_index,
                 factorial_calculator_clone,
-            )
+            );
+
+            let end_time = SystemTime::now();
+            println!(
+                "Thread {} done in {:?}!",
+                i,
+                end_time.duration_since(start_time)
+            );
+            res
         }));
     }
 
