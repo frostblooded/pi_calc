@@ -40,23 +40,7 @@ impl FactorialCalculator {
     }
 }
 
-fn calc_series_no_threads(precision: u32, n: u64) -> BigNum {
-    let mut pi = new_num(precision, 0);
-    let a = new_num(precision, 1103);
-    let b = new_num(precision, 26390);
-    let c = new_num(precision, 396);
-    let factorial_calculator = FactorialCalculator::new(precision, 4 * n);
-
-    for k in 0..=n {
-        pi += (factorial_calculator.get(4 * k) * (&a + &b * new_num(precision, k)))
-            / (pow(&factorial_calculator.get(k), 4) * pow(&c, 4 * k));
-    }
-
-    pi *= (new_num(precision, 2) * new_num(precision, 2).sqrt()) / new_num(precision, 9801);
-    1 / pi
-}
-
-fn calc_series_for_range(
+fn calc_series_helper_for_range(
     precision: u32,
     start_index: u64,
     end_index: u64,
@@ -75,23 +59,47 @@ fn calc_series_for_range(
     pi
 }
 
-fn calc_series_with_threads(precision: u32, thread_count: u64, n: u64) -> BigNum {
-    if n < thread_count {
-        return calc_series_no_threads(precision, n);
-    }
+fn calc_series(precision: u32, thread_count: u64, n: u64) -> BigNum {
+    let factorial_calculator = Arc::new(FactorialCalculator::new(precision, 4 * n));
 
+    let mut result = if n < thread_count {
+        calc_series_helper_for_range(precision, 0, n - 1, factorial_calculator)
+    } else {
+        calc_series_helper_with_threads(precision, thread_count, n, factorial_calculator)
+    };
+
+    result *= (new_num(precision, 2) * new_num(precision, 2).sqrt()) / new_num(precision, 9801);
+    1 / result
+}
+
+fn calc_series_helper_with_threads(
+    precision: u32,
+    thread_count: u64,
+    n: u64,
+    factorial_calculator: Arc<FactorialCalculator>,
+) -> BigNum {
     let mut handles = vec![];
     let jobs_per_thread = n / thread_count;
     let remaining_jobs = n % thread_count;
-    let factorial_calculator = Arc::new(FactorialCalculator::new(precision, 4 * n));
 
-    for i in 0..(thread_count - 1) {
-        let start_index = i * jobs_per_thread;
-        let end_index = (i + 1) * jobs_per_thread - 1;
+    let iter_range: Vec<_> = (0..(thread_count - 1)).collect();
+
+    let mut start_indexes: Vec<_> = iter_range.iter().map(|i| i * jobs_per_thread).collect();
+    start_indexes.push(n - jobs_per_thread - remaining_jobs);
+
+    let mut end_indexes: Vec<_> = iter_range
+        .iter()
+        .map(|i| (i + 1) * jobs_per_thread - 1)
+        .collect();
+    end_indexes.push(n - 1);
+
+    for i in 0..thread_count {
         let factorial_calculator_clone = factorial_calculator.clone();
+        let start_index = start_indexes[i as usize];
+        let end_index = end_indexes[i as usize];
 
         handles.push(thread::spawn(move || {
-            calc_series_for_range(
+            calc_series_helper_for_range(
                 precision,
                 start_index,
                 end_index,
@@ -100,23 +108,13 @@ fn calc_series_with_threads(precision: u32, thread_count: u64, n: u64) -> BigNum
         }));
     }
 
-    handles.push(thread::spawn(move || {
-        calc_series_for_range(
-            precision,
-            n - jobs_per_thread - remaining_jobs,
-            n,
-            factorial_calculator,
-        )
-    }));
-
     let mut result = new_num(precision, 0);
 
     for handle in handles {
         result += handle.join().expect("Thread finished with error");
     }
 
-    result *= (new_num(precision, 2) * new_num(precision, 2).sqrt()) / new_num(precision, 9801);
-    1 / result
+    result
 }
 
 fn main() {
@@ -150,8 +148,6 @@ fn main() {
         .parse()
         .expect("failed to parse precision to a number");
 
-    println!("{:?}", precision);
-    println!("{:?}", thread_count);
     // The precision that rug uses is the length of the mantissa in bits,
     // but the input precision is in digits after the dot. Here we convert
     // the input precision into the corresponding mantissa bit length
@@ -159,7 +155,6 @@ fn main() {
     let log = 10f32.log2();
     let precision = ((precision as f32) * log).floor() as u32;
 
-    let pi = calc_series_with_threads(precision, thread_count, 500);
-
-    println!("{:?}", pi);
+    let pi = calc_series(precision, thread_count, 10);
+    println!("{}", pi);
 }
