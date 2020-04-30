@@ -8,6 +8,7 @@ edition = "2018"
 clap = "2.33.0"
 rug = "1.8.0"
 criterion = "0.3.1"
+crossbeam-channel = "0.4.2"
 
 [[bench]]
 name = "pi_calc_benchmark"

@@ -60,7 +60,7 @@ pub fn calc_series(precision: u32, thread_count: u64, n: u64) -> BigNum {
     // that we are going to need.
     let factorial_calculator = Arc::new(FactorialCalculator::new(precision, 4 * n));
 
-    let mut result = if n < thread_count {
+    let mut result = if n < thread_count || thread_count == 1 {
         calc_series_helper_for_range(precision, 0, n - 1, factorial_calculator)
     } else {
         calc_series_helper_with_threads(precision, thread_count, n, factorial_calculator)
@@ -78,49 +78,81 @@ fn calc_series_helper_with_threads(
 ) -> BigNum {
     let total_start_time = SystemTime::now();
     let mut handles = vec![];
-    let jobs_per_thread = n / thread_count;
-    let remaining_jobs = n % thread_count;
+    let tasks_count = 50;
+    let iters_per_task = n / tasks_count;
+    let remaining_iters = n % tasks_count;
 
-    let iter_range: Vec<_> = (0..(thread_count - 1)).collect();
+    let iter_range: Vec<_> = (0..(tasks_count - 1)).collect();
 
-    let mut start_indexes: Vec<_> = iter_range.iter().map(|i| i * jobs_per_thread).collect();
-    start_indexes.push(n - jobs_per_thread - remaining_jobs);
+    let mut start_indexes: Vec<_> = iter_range.iter().map(|i| i * iters_per_task).collect();
+    start_indexes.push(n - iters_per_task - remaining_iters);
 
     let mut end_indexes: Vec<_> = iter_range
         .iter()
-        .map(|i| (i + 1) * jobs_per_thread - 1)
+        .map(|i| (i + 1) * iters_per_task - 1)
         .collect();
     end_indexes.push(n - 1);
 
+    let (sender, receiver) = crossbeam_channel::unbounded();
+
     for i in 0..thread_count {
-        let factorial_calculator_clone = factorial_calculator.clone();
-        let start_index = start_indexes[i as usize];
-        let end_index = end_indexes[i as usize];
+        let factorial_calculator_clone = Arc::clone(&factorial_calculator);
+        let receiver_clone = receiver.clone();
 
         handles.push(thread::spawn(move || {
-            let start_time = SystemTime::now();
+            let mut tasks_done_in_thread = 0;
+            let start_time_thread = SystemTime::now();
+            let mut res = new_num(precision, 0);
+
+            while let Ok((start_index, end_index)) = receiver_clone.recv() {
+                let start_time_job = SystemTime::now();
+
+                println!(
+                    "Thread {} starting on range ({}, {})!",
+                    i, start_index, end_index
+                );
+
+                res += calc_series_helper_for_range(
+                    precision,
+                    start_index,
+                    end_index,
+                    Arc::clone(&factorial_calculator_clone),
+                );
+
+                tasks_done_in_thread += 1;
+                let end_time_job = SystemTime::now();
+
+                println!(
+                    "Thread {} done with ({}, {}) in {:?}!",
+                    i,
+                    start_index,
+                    end_index,
+                    end_time_job.duration_since(start_time_job)
+                );
+            }
+
+            let end_time_thread = SystemTime::now();
 
             println!(
-                "Thread {} starting on range ({}, {})!",
-                i, start_index, end_index
-            );
-
-            let res = calc_series_helper_for_range(
-                precision,
-                start_index,
-                end_index,
-                factorial_calculator_clone,
-            );
-
-            let end_time = SystemTime::now();
-            println!(
-                "Thread {} done in {:?}!",
+                "Thread {} done in {:?}! It did {} tasks.",
                 i,
-                end_time.duration_since(start_time)
+                end_time_thread.duration_since(start_time_thread),
+                tasks_done_in_thread
             );
+
             res
         }));
     }
+
+    for i in 0..start_indexes.len() {
+        let start_index = start_indexes[i as usize];
+        let end_index = end_indexes[i as usize];
+        sender
+            .send((start_index, end_index))
+            .expect("Failed to send task");
+    }
+
+    drop(sender);
 
     let mut result = new_num(precision, 0);
 
