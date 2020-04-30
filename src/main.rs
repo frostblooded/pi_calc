@@ -1,4 +1,5 @@
 use clap::{App, Arg};
+use rug::ops::Pow;
 use std::sync::*;
 use std::thread;
 use std::time::SystemTime;
@@ -7,16 +8,6 @@ type BigNum = rug::Float;
 
 fn new_num(precision: u32, n: u64) -> BigNum {
     BigNum::with_val(precision, n)
-}
-
-fn pow(b: &BigNum, power: u64) -> BigNum {
-    let mut res = new_num(b.prec(), 1);
-
-    for _ in 1..=power {
-        res *= b;
-    }
-
-    res
 }
 
 struct FactorialCalculator {
@@ -54,8 +45,12 @@ fn calc_series_helper_for_range(
     let c = new_num(precision, 396);
 
     for k in start_index..=end_index {
-        pi += (factorial_calculator.get(4 * k) * (&a + &b * new_num(precision, k)))
-            / (pow(&factorial_calculator.get(k), 4) * pow(&c, 4 * k));
+        let top1 = factorial_calculator.get(4 * k);
+        let top2 = &a + &b * new_num(precision, k);
+        let bottom1 = BigNum::with_val(precision, factorial_calculator.get(k).pow(4));
+        let bottom2 = BigNum::with_val(precision, (&c).pow(4 * k));
+
+        pi += (top1 * top2) / (bottom1 * bottom2);
     }
 
     pi
