@@ -1,5 +1,5 @@
-mod calc;
 use clap::{App, Arg};
+use pi_calc::calc;
 
 fn main() {
     let matches = App::new("Pi calc program")
