@@ -39,7 +39,7 @@ fn calc_series_helper_for_range(
     factorial_calculator: Arc<FactorialCalculator>,
 ) -> BigNum {
     let mut pi = new_num(precision, 0);
-    let mut last_pi = new_num(precision, 0);
+    let mut last_pi: BigNum;
     let a = new_num(precision, 1103);
     let b = new_num(precision, 26390);
     let c = new_num(precision, 396);
@@ -62,6 +62,13 @@ fn calc_series_helper_for_range(
 }
 
 pub fn calc_series(precision: u32, thread_count: u64, n: u64) -> BigNum {
+    // The precision that rug uses is the length of the mantissa in bits,
+    // but the input precision is in digits after the dot. Here we convert
+    // the input precision into the corresponding mantissa bit length
+    // by multiplying the input by log2(10).
+    let log = 10f32.log2();
+    let precision = ((precision as f32) * log).floor() as u32;
+
     // Because of the used formula, we know that 4 * n is the biggest factorial
     // that we are going to need.
     let factorial_calculator = Arc::new(FactorialCalculator::new(precision, 4 * n));

@@ -2,27 +2,27 @@ use criterion::*;
 use pi_calc::calc;
 
 fn calc_series_benchmark(c: &mut Criterion) {
-    const TEST_ITERATIONS: u64 = 1000;
+    const MAX_ITERATIONS: u64 = 1000000;
     const MAX_THREADS: u64 = 4;
-    const PRECISION: u32 = 10000;
+    const TEST_PRECISION: u32 = 100;
 
     println!(
-        "{}",
-        calc::calc_series(PRECISION, MAX_THREADS, TEST_ITERATIONS)
+        "This should be Pi: {}",
+        calc::calc_series(TEST_PRECISION, MAX_THREADS, MAX_ITERATIONS)
     );
 
     const SAMPLE_SIZE: usize = 10;
     let mut group = c.benchmark_group("calc series");
     let custom_group = group.sample_size(SAMPLE_SIZE);
-    let keypoints = (10000..100000).step_by(10000);
+    let keypoints = (100..1000).step_by(100);
 
     for i in keypoints {
         custom_group.bench_function(BenchmarkId::new("single thread", i), |b| {
-            b.iter(|| calc::calc_series(PRECISION, 1, i))
+            b.iter(|| calc::calc_series(i, 1, MAX_ITERATIONS))
         });
 
         custom_group.bench_function(BenchmarkId::new("many threads", i), |b| {
-            b.iter(|| calc::calc_series(PRECISION, MAX_THREADS, i))
+            b.iter(|| calc::calc_series(i, MAX_THREADS, MAX_ITERATIONS))
         });
     }
 }
