@@ -39,6 +39,7 @@ fn calc_series_helper_for_range(
     factorial_calculator: Arc<FactorialCalculator>,
 ) -> BigNum {
     let mut pi = new_num(precision, 0);
+    let mut last_pi = new_num(precision, 0);
     let a = new_num(precision, 1103);
     let b = new_num(precision, 26390);
     let c = new_num(precision, 396);
@@ -49,7 +50,12 @@ fn calc_series_helper_for_range(
         let bottom1 = BigNum::with_val(precision, factorial_calculator.get(k).pow(4));
         let bottom2 = BigNum::with_val(precision, (&c).pow(4 * k));
 
+        last_pi = pi.clone();
         pi += (top1 * top2) / (bottom1 * bottom2);
+
+        if last_pi == pi {
+            return pi;
+        }
     }
 
     pi
