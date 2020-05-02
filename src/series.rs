@@ -138,7 +138,7 @@ fn calc_series_helper_with_threads(
     factorial_calculator: Arc<FactorialCalculator>,
 ) -> BigNum {
     let mut handles = vec![];
-    let (start_indexes, end_indexes) = range_to_subranges(n, 10);
+    let (start_indexes, end_indexes) = range_to_subranges(n, 8);
     let (sender, receiver) = crossbeam_channel::unbounded();
 
     for i in 0..thread_count {

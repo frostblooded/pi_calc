@@ -48,8 +48,8 @@ fn get_parsed_args() -> (u64, u32, bool, bool) {
         .parse()
         .expect("failed to parse precision to a number");
 
-    let debug_log: bool = matches.is_present("debug_log");
-    let quiet: bool = matches.is_present("quiet");
+    let debug_log = matches.is_present("debug_log");
+    let quiet = matches.is_present("quiet");
 
     (thread_count, precision, debug_log, quiet)
 }
