@@ -25,10 +25,15 @@ fn get_app_matches<'a>() -> ArgMatches<'a> {
                 .short("d")
                 .help("Whether debug logs should be printed"),
         )
+        .arg(
+            Arg::with_name("quiet")
+                .short("q")
+                .help("Whether the result should be printed to STDOUT"),
+        )
         .get_matches()
 }
 
-fn get_parsed_args() -> (u64, u32, bool) {
+fn get_parsed_args() -> (u64, u32, bool, bool) {
     let matches = get_app_matches();
 
     let thread_count: u64 = matches
@@ -44,18 +49,23 @@ fn get_parsed_args() -> (u64, u32, bool) {
         .expect("failed to parse precision to a number");
 
     let debug_log: bool = matches.is_present("debug_log");
+    let quiet: bool = matches.is_present("quiet");
 
-    (thread_count, precision, debug_log)
+    (thread_count, precision, debug_log, quiet)
 }
 
 fn main() {
-    let (thread_count, precision, debug_log) = get_parsed_args();
+    let (thread_count, precision, debug_log, quiet) = get_parsed_args();
 
     if debug_log {
         simple_logger::init().expect("Failed to initialize simple_logger");
     }
 
     let pi = calc_series(precision, thread_count);
+
+    if quiet {
+        return;
+    }
 
     // There are some digits at the back of the number
     // that are remainders from the computation and aren't
