@@ -40,8 +40,7 @@ pub fn calc_series(precision: u32, thread_count: u64, n: u64) -> BigNum {
     // but the input precision is in digits after the dot. Here we convert
     // the input precision into the corresponding mantissa bit length
     // by multiplying the input by log2(10).
-    let log = 10f32.log2();
-    let precision = ((precision as f32) * log).floor() as u32;
+    let precision = ((precision as f32) * std::f32::consts::LOG2_10).floor() as u32;
 
     // Because of the used formula, we know that 4 * n is the biggest factorial
     // that we are going to need.
