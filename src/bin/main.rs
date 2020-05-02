@@ -19,10 +19,11 @@ fn get_app_matches<'a>() -> ArgMatches<'a> {
                 .takes_value(true),
         )
         .arg(Arg::with_name("iterations").short("i").takes_value(true))
+        .arg(Arg::with_name("debug_log").short("d"))
         .get_matches()
 }
 
-fn get_parsed_args() -> (u64, u32, u64) {
+fn get_parsed_args() -> (u64, u32, u64, bool) {
     let matches = get_app_matches();
 
     let thread_count: u64 = matches
@@ -44,11 +45,18 @@ fn get_parsed_args() -> (u64, u32, u64) {
         .parse()
         .expect("failed to parse iterations to a number");
 
-    (thread_count, precision, iterations)
+    let debug_log: bool = matches.is_present("debug_log");
+
+    (thread_count, precision, iterations, debug_log)
 }
 
 fn main() {
-    let (thread_count, precision, iterations) = get_parsed_args();
+    let (thread_count, precision, iterations, debug_log) = get_parsed_args();
+
+    if debug_log {
+        simple_logger::init().expect("Failed to initialize simple_logger");
+    }
+
     let pi = calc_series(precision, thread_count, iterations);
     println!("{}", pi);
 }

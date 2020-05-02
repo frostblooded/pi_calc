@@ -5,6 +5,8 @@ authors = ["Nikolay Danailov <frostblooded@yahoo.com>"]
 edition = "2018"
 
 [dependencies]
+log = "0.4.8"
+simple_logger = "1.6.0"
 clap = "2.33.0"
 rug = "1.8.0"
 criterion = "0.3.1"

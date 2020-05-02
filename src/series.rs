@@ -1,4 +1,5 @@
 use crossbeam_channel::Receiver;
+use log::debug;
 use rug::ops::Pow;
 use std::sync::*;
 use std::thread;
@@ -71,7 +72,7 @@ fn handle_thread(
     while let Ok((start_index, end_index)) = receiver.recv() {
         let start_time_job = SystemTime::now();
 
-        println!(
+        debug!(
             "Thread {} starting on range ({}, {})!",
             i, start_index, end_index
         );
@@ -86,7 +87,7 @@ fn handle_thread(
         tasks_done_in_thread += 1;
         let end_time_job = SystemTime::now();
 
-        println!(
+        debug!(
             "Thread {} done with ({}, {}) in {:?}!",
             i,
             start_index,
@@ -97,7 +98,7 @@ fn handle_thread(
 
     let end_time_thread = SystemTime::now();
 
-    println!(
+    debug!(
         "Thread {} done in {:?}! It did {} tasks.",
         i,
         end_time_thread.duration_since(start_time_thread),
@@ -145,7 +146,7 @@ fn calc_series_helper_with_threads(
 
     let total_end_time = SystemTime::now();
 
-    println!(
+    debug!(
         "Total execution done in {:?}!",
         total_end_time.duration_since(total_start_time)
     );
