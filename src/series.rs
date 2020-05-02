@@ -16,7 +16,6 @@ fn calc_series_helper_for_range(
     factorial_calculator: Arc<FactorialCalculator>,
 ) -> BigNum {
     let mut pi = new_num(precision, 0);
-    let mut last_pi: BigNum;
     let a = new_num(precision, 1103);
     let b = new_num(precision, 26390);
     let c = new_num(precision, 396);
@@ -27,12 +26,7 @@ fn calc_series_helper_for_range(
         let bottom1 = BigNum::with_val(precision, factorial_calculator.get(k).pow(4));
         let bottom2 = BigNum::with_val(precision, (&c).pow(4 * k));
 
-        last_pi = pi.clone();
         pi += (top1 * top2) / (bottom1 * bottom2);
-
-        if last_pi == pi {
-            return pi;
-        }
     }
 
     pi
@@ -42,7 +36,7 @@ pub fn calc_series(input_precision: u32, thread_count: u64) -> BigNum {
     let total_start_time = SystemTime::now();
     let n = ((input_precision as f32) / 7.).ceil() as u64;
 
-    const ADDITIONAL_PRECISION: u32 = 10;
+    const ADDITIONAL_PRECISION: u32 = 1;
     let increased_precision = input_precision + ADDITIONAL_PRECISION;
 
     debug!("Input precision: {}", input_precision);
@@ -82,7 +76,7 @@ pub fn calc_series(input_precision: u32, thread_count: u64) -> BigNum {
 
     debug!(
         "Total execution done in {:?}!",
-        total_end_time.duration_since(total_start_time)
+        total_end_time.duration_since(total_start_time).unwrap()
     );
 
     result
@@ -121,7 +115,7 @@ fn handle_thread(
             i,
             start_index,
             end_index,
-            end_time_job.duration_since(start_time_job)
+            end_time_job.duration_since(start_time_job).unwrap()
         );
     }
 
@@ -130,7 +124,7 @@ fn handle_thread(
     debug!(
         "Thread {} done in {:?}! It did {} tasks.",
         i,
-        end_time_thread.duration_since(start_time_thread),
+        end_time_thread.duration_since(start_time_thread).unwrap(),
         tasks_done_in_thread
     );
 

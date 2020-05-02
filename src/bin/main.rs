@@ -10,16 +10,21 @@ fn get_app_matches<'a>() -> ArgMatches<'a> {
             Arg::with_name("thread_count")
                 .short("t")
                 .required(true)
-                .takes_value(true),
+                .takes_value(true)
+                .help("Count of threads to be spawned for the calculation"),
         )
         .arg(
             Arg::with_name("precision")
                 .short("p")
                 .required(true)
-                .takes_value(true),
+                .takes_value(true)
+                .help("Digits to be calculated"),
         )
-        .arg(Arg::with_name("iterations").short("i").takes_value(true))
-        .arg(Arg::with_name("debug_log").short("d"))
+        .arg(
+            Arg::with_name("debug_log")
+                .short("d")
+                .help("Whether debug logs should be printed"),
+        )
         .get_matches()
 }
 
@@ -51,5 +56,16 @@ fn main() {
     }
 
     let pi = calc_series(precision, thread_count);
-    println!("{}", pi);
+
+    // There are some digits at the back of the number
+    // that are remainders from the computation and aren't
+    // accurate, so we don't want to display them.
+    // We display only as much digits as is the input precision.
+    let mut truncated_pi = pi.to_string();
+
+    // Add 1 to account for the dot in the float
+    let truncated_length = precision + 1;
+
+    truncated_pi.truncate(truncated_length as usize);
+    println!("{}", truncated_pi);
 }
