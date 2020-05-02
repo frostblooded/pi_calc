@@ -1,3 +1,4 @@
+use crossbeam_channel::Receiver;
 use rug::ops::Pow;
 use std::sync::*;
 use std::thread;
@@ -5,6 +6,7 @@ use std::time::SystemTime;
 
 use crate::big_num::*;
 use crate::factorial_calculator::*;
+use crate::utils::*;
 
 fn calc_series_helper_for_range(
     precision: u32,
@@ -56,6 +58,55 @@ pub fn calc_series(precision: u32, thread_count: u64, n: u64) -> BigNum {
     1 / result
 }
 
+fn handle_thread(
+    i: u64,
+    receiver: Receiver<(u64, u64)>,
+    factorial_calculator: Arc<FactorialCalculator>,
+    precision: u32,
+) -> BigNum {
+    let mut tasks_done_in_thread = 0;
+    let start_time_thread = SystemTime::now();
+    let mut res = new_num(precision, 0);
+
+    while let Ok((start_index, end_index)) = receiver.recv() {
+        let start_time_job = SystemTime::now();
+
+        println!(
+            "Thread {} starting on range ({}, {})!",
+            i, start_index, end_index
+        );
+
+        res += calc_series_helper_for_range(
+            precision,
+            start_index,
+            end_index,
+            Arc::clone(&factorial_calculator),
+        );
+
+        tasks_done_in_thread += 1;
+        let end_time_job = SystemTime::now();
+
+        println!(
+            "Thread {} done with ({}, {}) in {:?}!",
+            i,
+            start_index,
+            end_index,
+            end_time_job.duration_since(start_time_job)
+        );
+    }
+
+    let end_time_thread = SystemTime::now();
+
+    println!(
+        "Thread {} done in {:?}! It did {} tasks.",
+        i,
+        end_time_thread.duration_since(start_time_thread),
+        tasks_done_in_thread
+    );
+
+    res
+}
+
 fn calc_series_helper_with_threads(
     precision: u32,
     thread_count: u64,
@@ -64,24 +115,7 @@ fn calc_series_helper_with_threads(
 ) -> BigNum {
     let total_start_time = SystemTime::now();
     let mut handles = vec![];
-    let wanted_tasks_count = 10;
-    let iters_per_task = ((n as f64) / (wanted_tasks_count as f64)).ceil() as u64;
-    let remaining_iters = n % wanted_tasks_count;
-    let tasks_count = n / iters_per_task + 1;
-
-    // We are excluding the iters for the last task, because they
-    // are added additionally as remainder.
-    let iter_range: Vec<_> = (0..(tasks_count - 2)).collect();
-
-    let mut start_indexes: Vec<u64> = iter_range.iter().map(|i| i * iters_per_task).collect();
-    start_indexes.push(n - iters_per_task - remaining_iters);
-
-    let mut end_indexes: Vec<u64> = iter_range
-        .iter()
-        .map(|i| (i + 1) * iters_per_task - 1)
-        .collect();
-    end_indexes.push(n - 1);
-
+    let (start_indexes, end_indexes) = range_to_subranges(n, 10);
     let (sender, receiver) = crossbeam_channel::unbounded();
 
     for i in 0..thread_count {
@@ -89,47 +123,7 @@ fn calc_series_helper_with_threads(
         let receiver_clone = receiver.clone();
 
         handles.push(thread::spawn(move || {
-            let mut tasks_done_in_thread = 0;
-            let start_time_thread = SystemTime::now();
-            let mut res = new_num(precision, 0);
-
-            while let Ok((start_index, end_index)) = receiver_clone.recv() {
-                let start_time_job = SystemTime::now();
-
-                println!(
-                    "Thread {} starting on range ({}, {})!",
-                    i, start_index, end_index
-                );
-
-                res += calc_series_helper_for_range(
-                    precision,
-                    start_index,
-                    end_index,
-                    Arc::clone(&factorial_calculator_clone),
-                );
-
-                tasks_done_in_thread += 1;
-                let end_time_job = SystemTime::now();
-
-                println!(
-                    "Thread {} done with ({}, {}) in {:?}!",
-                    i,
-                    start_index,
-                    end_index,
-                    end_time_job.duration_since(start_time_job)
-                );
-            }
-
-            let end_time_thread = SystemTime::now();
-
-            println!(
-                "Thread {} done in {:?}! It did {} tasks.",
-                i,
-                end_time_thread.duration_since(start_time_thread),
-                tasks_done_in_thread
-            );
-
-            res
+            handle_thread(i, receiver_clone, factorial_calculator_clone, precision)
         }));
     }
 

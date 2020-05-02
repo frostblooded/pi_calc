@@ -1,8 +1,8 @@
-use clap::{App, Arg};
+use clap::{App, Arg, ArgMatches};
 use pi_calc::series::*;
 
-fn main() {
-    let matches = App::new("Pi calc program")
+fn get_app_matches<'a>() -> ArgMatches<'a> {
+    App::new("Pi calc program")
         .version("1.0")
         .author("Nikolay Danailov")
         .about("Efficiently calculating Pi in a multithreaded way")
@@ -19,7 +19,11 @@ fn main() {
                 .takes_value(true),
         )
         .arg(Arg::with_name("iterations").short("i").takes_value(true))
-        .get_matches();
+        .get_matches()
+}
+
+fn get_parsed_args() -> (u64, u32, u64) {
+    let matches = get_app_matches();
 
     let thread_count: u64 = matches
         .value_of("thread_count")
@@ -40,6 +44,11 @@ fn main() {
         .parse()
         .expect("failed to parse iterations to a number");
 
+    (thread_count, precision, iterations)
+}
+
+fn main() {
+    let (thread_count, precision, iterations) = get_parsed_args();
     let pi = calc_series(precision, thread_count, iterations);
     println!("{}", pi);
 }
