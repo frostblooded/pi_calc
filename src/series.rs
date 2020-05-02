@@ -38,25 +38,54 @@ fn calc_series_helper_for_range(
     pi
 }
 
-pub fn calc_series(precision: u32, thread_count: u64, n: u64) -> BigNum {
+pub fn calc_series(input_precision: u32, thread_count: u64) -> BigNum {
+    let total_start_time = SystemTime::now();
+    let n = ((input_precision as f32) / 7.).ceil() as u64;
+
+    const ADDITIONAL_PRECISION: u32 = 10;
+    let increased_precision = input_precision + ADDITIONAL_PRECISION;
+
+    debug!("Input precision: {}", input_precision);
+    debug!("Used precision: {}", increased_precision);
+    debug!("Iterations: {}", n);
+
     // The precision that rug uses is the length of the mantissa in bits,
     // but the input precision is in digits after the dot. Here we convert
     // the input precision into the corresponding mantissa bit length
     // by multiplying the input by log2(10).
-    let precision = ((precision as f32) * std::f32::consts::LOG2_10).floor() as u32;
+    let used_increased_precision =
+        ((increased_precision as f32) * std::f32::consts::LOG2_10).floor() as u32;
+    let used_input_precision =
+        ((input_precision as f32) * std::f32::consts::LOG2_10).floor() as u32;
 
     // Because of the used formula, we know that 4 * n is the biggest factorial
     // that we are going to need.
-    let factorial_calculator = Arc::new(FactorialCalculator::new(precision, 4 * n));
+    let factorial_calculator = Arc::new(FactorialCalculator::new(used_increased_precision, 4 * n));
 
     let mut result = if n < thread_count || thread_count == 1 {
-        calc_series_helper_for_range(precision, 0, n - 1, factorial_calculator)
+        calc_series_helper_for_range(used_increased_precision, 0, n - 1, factorial_calculator)
     } else {
-        calc_series_helper_with_threads(precision, thread_count, n, factorial_calculator)
+        calc_series_helper_with_threads(
+            used_increased_precision,
+            thread_count,
+            n,
+            factorial_calculator,
+        )
     };
 
-    result *= (new_num(precision, 2) * new_num(precision, 2).sqrt()) / new_num(precision, 9801);
-    1 / result
+    result *= (new_num(used_increased_precision, 2) * new_num(used_increased_precision, 2).sqrt())
+        / new_num(used_increased_precision, 9801);
+    result = result.recip();
+    result.set_prec(used_input_precision);
+
+    let total_end_time = SystemTime::now();
+
+    debug!(
+        "Total execution done in {:?}!",
+        total_end_time.duration_since(total_start_time)
+    );
+
+    result
 }
 
 fn handle_thread(
@@ -114,7 +143,6 @@ fn calc_series_helper_with_threads(
     n: u64,
     factorial_calculator: Arc<FactorialCalculator>,
 ) -> BigNum {
-    let total_start_time = SystemTime::now();
     let mut handles = vec![];
     let (start_indexes, end_indexes) = range_to_subranges(n, 10);
     let (sender, receiver) = crossbeam_channel::unbounded();
@@ -143,13 +171,6 @@ fn calc_series_helper_with_threads(
     for handle in handles {
         result += handle.join().expect("Thread finished with error");
     }
-
-    let total_end_time = SystemTime::now();
-
-    debug!(
-        "Total execution done in {:?}!",
-        total_end_time.duration_since(total_start_time)
-    );
 
     result
 }
