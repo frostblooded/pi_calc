@@ -1,5 +1,5 @@
 use clap::{App, Arg};
-use pi_calc::calc;
+use pi_calc::series::*;
 
 fn main() {
     let matches = App::new("Pi calc program")
@@ -40,6 +40,6 @@ fn main() {
         .parse()
         .expect("failed to parse iterations to a number");
 
-    let pi = calc::calc_series(precision, thread_count, iterations);
+    let pi = calc_series(precision, thread_count, iterations);
     println!("{}", pi);
 }

@@ -1,36 +1,10 @@
-type BigNum = rug::Float;
-
 use rug::ops::Pow;
 use std::sync::*;
 use std::thread;
 use std::time::SystemTime;
 
-fn new_num(precision: u32, n: u64) -> BigNum {
-    BigNum::with_val(precision, n)
-}
-
-struct FactorialCalculator {
-    cache: Vec<BigNum>,
-}
-
-impl FactorialCalculator {
-    fn new(precision: u32, n: u64) -> Self {
-        let mut cache_builder: Vec<BigNum> = vec![];
-        cache_builder.push(new_num(precision, 1));
-
-        for i in 1..=n {
-            cache_builder.push(&cache_builder[(i - 1) as usize] * new_num(precision, i));
-        }
-
-        FactorialCalculator {
-            cache: cache_builder,
-        }
-    }
-
-    fn get(&self, i: u64) -> &BigNum {
-        &self.cache[i as usize]
-    }
-}
+use crate::big_num::*;
+use crate::factorial_calculator::*;
 
 fn calc_series_helper_for_range(
     precision: u32,

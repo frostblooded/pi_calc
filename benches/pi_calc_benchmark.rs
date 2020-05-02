@@ -1,5 +1,5 @@
 use criterion::*;
-use pi_calc::calc;
+use pi_calc::series::*;
 
 fn calc_series_benchmark(c: &mut Criterion) {
     const MAX_ITERATIONS: u64 = 1000000;
@@ -8,7 +8,7 @@ fn calc_series_benchmark(c: &mut Criterion) {
 
     println!(
         "This should be Pi: {}",
-        calc::calc_series(TEST_PRECISION, MAX_THREADS, MAX_ITERATIONS)
+        calc_series(TEST_PRECISION, MAX_THREADS, MAX_ITERATIONS)
     );
 
     const SAMPLE_SIZE: usize = 10;
@@ -18,11 +18,11 @@ fn calc_series_benchmark(c: &mut Criterion) {
 
     for i in keypoints {
         custom_group.bench_function(BenchmarkId::new("single thread", i), |b| {
-            b.iter(|| calc::calc_series(i, 1, MAX_ITERATIONS))
+            b.iter(|| calc_series(i, 1, MAX_ITERATIONS))
         });
 
         custom_group.bench_function(BenchmarkId::new("many threads", i), |b| {
-            b.iter(|| calc::calc_series(i, MAX_THREADS, MAX_ITERATIONS))
+            b.iter(|| calc_series(i, MAX_THREADS, MAX_ITERATIONS))
         });
     }
 }
