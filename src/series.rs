@@ -1,4 +1,3 @@
-use crossbeam_channel::Receiver;
 use log::debug;
 use rug::ops::Pow;
 use std::ops::Range;
@@ -53,9 +52,16 @@ pub fn calc_series(input_precision: u32, thread_count: u64) -> BigNum {
     let used_input_precision =
         ((input_precision as f32) * std::f32::consts::LOG2_10).floor() as u32;
 
+    let cache_start_time = SystemTime::now();
     // Because of the used formula, we know that 4 * n is the biggest factorial
     // that we are going to need.
     let factorial_calculator = Arc::new(FactorialCalculator::new(used_increased_precision, 4 * n));
+    let cache_end_time = SystemTime::now();
+
+    debug!(
+        "Cache preparation done in {:?}!",
+        cache_end_time.duration_since(cache_start_time).unwrap()
+    );
 
     let mut result = if n < thread_count || thread_count == 1 {
         calc_series_helper_for_range(used_increased_precision, 0, n - 1, factorial_calculator)
@@ -85,7 +91,7 @@ pub fn calc_series(input_precision: u32, thread_count: u64) -> BigNum {
 
 fn handle_thread(
     i: u64,
-    receiver: Receiver<Range<u64>>,
+    task: Vec<Range<u64>>,
     factorial_calculator: Arc<FactorialCalculator>,
     precision: u32,
 ) -> BigNum {
@@ -93,7 +99,7 @@ fn handle_thread(
     let start_time_thread = SystemTime::now();
     let mut res = new_num(precision, 0);
 
-    while let Ok(range) = receiver.recv() {
+    for range in task {
         let start_index = range.start;
         let end_index = range.end;
         let start_time_job = SystemTime::now();
@@ -141,23 +147,17 @@ fn calc_series_helper_with_threads(
     factorial_calculator: Arc<FactorialCalculator>,
 ) -> BigNum {
     let mut handles = vec![];
-    let subranges = utils::split_range_to_count(&(0..n), thread_count * 2);
-    let (sender, receiver) = crossbeam_channel::unbounded();
+    let tasks = utils::split_range_for_threading(&(0..n), thread_count);
+    debug!("Tasks: {:?}", tasks);
 
     for i in 0..thread_count {
         let factorial_calculator_clone = Arc::clone(&factorial_calculator);
-        let receiver_clone = receiver.clone();
+        let task = tasks[i as usize].clone();
 
         handles.push(thread::spawn(move || {
-            handle_thread(i, receiver_clone, factorial_calculator_clone, precision)
+            handle_thread(i, task, factorial_calculator_clone, precision)
         }));
     }
-
-    for s in subranges {
-        sender.send(s).expect("Failed to send task");
-    }
-
-    drop(sender);
 
     let mut result = new_num(precision, 0);
 
