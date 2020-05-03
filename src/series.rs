@@ -1,13 +1,14 @@
 use crossbeam_channel::Receiver;
 use log::debug;
 use rug::ops::Pow;
+use std::ops::Range;
 use std::sync::*;
 use std::thread;
 use std::time::SystemTime;
 
 use crate::big_num::*;
 use crate::factorial_calculator::*;
-use crate::utils::*;
+use crate::utils;
 
 fn calc_series_helper_for_range(
     precision: u32,
@@ -84,7 +85,7 @@ pub fn calc_series(input_precision: u32, thread_count: u64) -> BigNum {
 
 fn handle_thread(
     i: u64,
-    receiver: Receiver<(u64, u64)>,
+    receiver: Receiver<Range<u64>>,
     factorial_calculator: Arc<FactorialCalculator>,
     precision: u32,
 ) -> BigNum {
@@ -92,7 +93,9 @@ fn handle_thread(
     let start_time_thread = SystemTime::now();
     let mut res = new_num(precision, 0);
 
-    while let Ok((start_index, end_index)) = receiver.recv() {
+    while let Ok(range) = receiver.recv() {
+        let start_index = range.start;
+        let end_index = range.end;
         let start_time_job = SystemTime::now();
 
         debug!(
@@ -138,7 +141,7 @@ fn calc_series_helper_with_threads(
     factorial_calculator: Arc<FactorialCalculator>,
 ) -> BigNum {
     let mut handles = vec![];
-    let (start_indexes, end_indexes) = range_to_subranges(n, 8);
+    let subranges = utils::split_range_to_count(&(0..n), thread_count * 2);
     let (sender, receiver) = crossbeam_channel::unbounded();
 
     for i in 0..thread_count {
@@ -150,12 +153,8 @@ fn calc_series_helper_with_threads(
         }));
     }
 
-    for i in 0..start_indexes.len() {
-        let start_index = start_indexes[i as usize];
-        let end_index = end_indexes[i as usize];
-        sender
-            .send((start_index, end_index))
-            .expect("Failed to send task");
+    for s in subranges {
+        sender.send(s).expect("Failed to send task");
     }
 
     drop(sender);
