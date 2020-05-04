@@ -14,7 +14,7 @@ fn calc_series_benchmark(c: &mut Criterion) {
     const SAMPLE_SIZE: usize = 10;
     let mut group = c.benchmark_group("calc series");
     let custom_group = group.sample_size(SAMPLE_SIZE);
-    let keypoints = (10_000..100_000).step_by(1_000);
+    let keypoints = (10_000..100_000).step_by(10_000);
 
     for i in keypoints {
         custom_group.bench_function(BenchmarkId::new("single thread", i), |b| {
