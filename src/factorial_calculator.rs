@@ -1,4 +1,5 @@
 use crate::big_num::*;
+use log::debug;
 
 pub struct FactorialCalculator {
     cache: Vec<BigNum>,
@@ -19,6 +20,7 @@ impl FactorialCalculator {
     }
 
     pub fn get(&self, i: u64) -> &BigNum {
+        debug!("Getting factorial {}", i);
         &self.cache[i as usize]
     }
 }
