@@ -150,11 +150,15 @@ fn calc_series_helper_with_threads(
     let tasks = utils::split_range_for_threading(&(0..n), thread_count);
     debug!("Tasks: {:?}", tasks);
 
+    let core_ids = core_affinity::get_core_ids().unwrap();
+
     for i in 0..thread_count {
         let factorial_calculator_clone = Arc::clone(&factorial_calculator);
         let task = tasks[i as usize].clone();
+        let core_id = core_ids[i as usize];
 
         handles.push(thread::spawn(move || {
+            core_affinity::set_for_current(core_id);
             handle_thread(i, task, factorial_calculator_clone, precision)
         }));
     }

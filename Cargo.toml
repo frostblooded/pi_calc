@@ -5,6 +5,7 @@ authors = ["Nikolay Danailov <frostblooded@yahoo.com>"]
 edition = "2018"
 
 [dependencies]
+core_affinity = "0.5.10"
 num_cpus = "1.13.0"
 log = "0.4.8"
 simple_logger = "1.6.0"
