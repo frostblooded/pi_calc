@@ -21,50 +21,10 @@ fn calc_series_helper_for_range(
     let c = new_num(precision, 396);
 
     for k in start_index..=end_index {
-        let top_1_start_time = SystemTime::now();
         let top1 = factorial_calculator.get(4 * k);
-        let top_1_end_time = SystemTime::now();
-
-        debug!(
-            "Top 1 {} done in {:?}!",
-            k,
-            top_1_end_time.duration_since(top_1_start_time).unwrap()
-        );
-
-        let top_2_start_time = SystemTime::now();
         let top2 = &a + &b * new_num(precision, k);
-        let top_2_end_time = SystemTime::now();
-
-        debug!(
-            "Top 2 {} done in {:?}!",
-            k,
-            top_2_end_time.duration_since(top_2_start_time).unwrap()
-        );
-
-        let bottom_1_start_time = SystemTime::now();
         let bottom1 = BigNum::with_val(precision, factorial_calculator.get(k).pow(4));
-        let bottom_1_end_time = SystemTime::now();
-
-        debug!(
-            "Bottom 1 {} done in {:?}!",
-            k,
-            bottom_1_end_time
-                .duration_since(bottom_1_start_time)
-                .unwrap()
-        );
-
-        let bottom_2_start_time = SystemTime::now();
         let bottom2 = BigNum::with_val(precision, (&c).pow(4 * k));
-        let bottom_2_end_time = SystemTime::now();
-
-        debug!(
-            "Bottom 2 {} done in {:?}!",
-            k,
-            bottom_2_end_time
-                .duration_since(bottom_2_start_time)
-                .unwrap()
-        );
-
         pi += (top1 * top2) / (bottom1 * bottom2);
     }
 
