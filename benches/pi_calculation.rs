@@ -28,7 +28,8 @@ fn bench() {
         }
     }
 
-    println!("{:?}", best_durations);
+    let result: Vec<_> = best_durations.iter().map(|a| a.unwrap()).collect();
+    println!("{:?}", result);
 }
 
 fn main() {
