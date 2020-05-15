@@ -1,5 +1,12 @@
 use pi_calc::series::*;
-use std::time::SystemTime;
+use std::time::{Duration, SystemTime};
+
+#[derive(Debug)]
+struct BenchResult {
+    thread_count: usize,
+    duration: Duration,
+    acceleration: f64,
+}
 
 fn bench() {
     const SAMPLES_COUNT: u32 = 10;
@@ -28,8 +35,22 @@ fn bench() {
         }
     }
 
-    let result: Vec<_> = best_durations.iter().map(|a| a.unwrap()).collect();
-    println!("{:?}", result);
+    let mut results: Vec<BenchResult> = Vec::with_capacity(cores as usize);
+    let one_thread_duration = best_durations[0].unwrap().as_millis() as f64;
+
+    for i in 0..best_durations.len() {
+        let current_duration = best_durations[i as usize].unwrap().as_millis() as f64;
+        let expected_duration = one_thread_duration / (i + 1) as f64;
+        let acceleration = 100f64 * expected_duration / current_duration;
+
+        results.push(BenchResult {
+            thread_count: i + 1,
+            duration: best_durations[i as usize].unwrap(),
+            acceleration,
+        })
+    }
+
+    println!("{:?}", results);
 }
 
 fn main() {
