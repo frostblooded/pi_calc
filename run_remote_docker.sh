@@ -1,1 +1,1 @@
-ssh u81621@t5600.rmi.yaht.net "docker run frostblooded/pi-calc"
+ssh u81621@t5600.rmi.yaht.net "./run.sh"
