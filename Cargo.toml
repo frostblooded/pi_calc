@@ -10,7 +10,6 @@ log = "0.4.8"
 simple_logger = "1.6.0"
 clap = "2.33.0"
 rug = "1.8.0"
-crossbeam-channel = "0.4.2"
 
 [[bench]]
 name = "pi_calculation"
