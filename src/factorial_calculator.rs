@@ -18,6 +18,7 @@ impl FactorialCalculator {
         }
     }
 
+    #[inline]
     pub fn get(&self, i: u64) -> &BigNum {
         &self.cache[i as usize]
     }
