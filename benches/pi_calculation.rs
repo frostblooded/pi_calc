@@ -10,7 +10,7 @@ struct BenchResult {
 
 fn bench() {
     const SAMPLES_COUNT: u32 = 10;
-    const PRECISION: u32 = 10_000;
+    const PRECISION: u32 = 30_000;
     let cores = num_cpus::get() as u64;
     let mut best_durations = vec![None; cores as usize];
 
