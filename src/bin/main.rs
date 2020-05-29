@@ -1,5 +1,6 @@
 use clap::{App, Arg, ArgMatches};
 use pi_calc::series::*;
+use std::fs;
 
 fn get_app_matches<'a>() -> ArgMatches<'a> {
     App::new("Pi calc program")
@@ -11,29 +12,35 @@ fn get_app_matches<'a>() -> ArgMatches<'a> {
                 .short("t")
                 .required(true)
                 .takes_value(true)
-                .help("Count of threads to be spawned for the calculation"),
+                .help("Count of threads to be spawned for the calculation."),
         )
         .arg(
             Arg::with_name("precision")
                 .short("p")
                 .required(true)
                 .takes_value(true)
-                .help("Digits to be calculated"),
+                .help("Digits to be calculated."),
         )
         .arg(
             Arg::with_name("debug_log")
                 .short("d")
-                .help("Whether debug logs should be printed"),
+                .help("Whether debug logs should be printed."),
         )
         .arg(
             Arg::with_name("quiet")
                 .short("q")
-                .help("Whether the result should be printed to STDOUT"),
+                .help("Whether the result should be printed."),
+        )
+        .arg(
+            Arg::with_name("output")
+                .short("o")
+                .help("To which file the output should be written. Default is STDOUT.")
+                .takes_value(true),
         )
         .get_matches()
 }
 
-fn get_parsed_args() -> (u64, u32, bool, bool) {
+fn get_parsed_args() -> (u64, u32, bool, bool, Option<String>) {
     let matches = get_app_matches();
 
     let thread_count: u64 = matches
@@ -50,12 +57,13 @@ fn get_parsed_args() -> (u64, u32, bool, bool) {
 
     let debug_log = matches.is_present("debug_log");
     let quiet = matches.is_present("quiet");
+    let output = matches.value_of("output").map(|s| s.to_string());
 
-    (thread_count, precision, debug_log, quiet)
+    (thread_count, precision, debug_log, quiet, output)
 }
 
 fn main() {
-    let (thread_count, precision, debug_log, quiet) = get_parsed_args();
+    let (thread_count, precision, debug_log, quiet, output) = get_parsed_args();
 
     if debug_log {
         simple_logger::init().expect("Failed to initialize simple_logger");
@@ -77,5 +85,10 @@ fn main() {
     let truncated_length = precision + 1;
 
     truncated_pi.truncate(truncated_length as usize);
-    println!("{}", truncated_pi);
+
+    if let Some(file_path) = output {
+        fs::write(file_path, truncated_pi).expect("Unable to write to file");
+    } else {
+        println!("{}", truncated_pi);
+    }
 }
